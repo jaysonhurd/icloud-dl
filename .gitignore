@@ -1,0 +1,22 @@
+# Personal agent state and IDE settings.
+.codex/
+.aws/
+.idea/
+.vscode/
+*.iml
+# Local secrets and generated output.
+.env
+.env.*
+!.env.example
+*.log
+__pycache__/
+*.pyc
+
+# Compiled application and local output.
+/build/
+/dist/
+/icloud-dl
+*.exe
+*.test
+*.out
+vendor/

@@ -1,0 +1,125 @@
+// Command icloud-dl is the entry point for the personal archive utility.
+package main
+
+import (
+	"context"
+	"errors"
+	"flag"
+	"fmt"
+	"io"
+	"log/slog"
+	"os"
+	"os/signal"
+	"path/filepath"
+
+	"github.com/jaysonhurd/icloud-dl/internal/apple"
+	"github.com/jaysonhurd/icloud-dl/internal/media"
+	"github.com/jaysonhurd/icloud-dl/internal/state"
+)
+
+const (
+	version    = "0.1.0-dev"
+	logStarted = "Command started"
+)
+
+// main owns signal handling and process exit.
+func main() {
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
+	os.Exit(run(ctx, os.Args[1:], os.Stdout, os.Stderr))
+}
+
+// run parses commands without accepting credentials on the command line.
+func run(ctx context.Context, args []string, out, stderr io.Writer) int {
+	if ctx.Err() != nil {
+		return 130
+	}
+	if len(args) == 0 {
+		fmt.Fprintln(stderr, "Interactive wizard is pending Apple authentication implementation; no credentials requested.")
+		return 4
+	}
+	switch args[0] {
+	case "--version":
+		fmt.Fprintln(out, "icloud-dl", version)
+		return 0
+	case "--help", "help":
+		fmt.Fprintln(out, "icloud-dl: personal best-effort originals downloader (initial build)\nCommands: login, download, status, logout\nDownload flags: --destination PATH --profile NAME --workers 1..4 --overwrite --dry-run\nMedia layout: DESTINATION/originals. Same name/size skips are unverified.\nApple login/download and interactive wizard are not yet implemented.")
+		return 0
+	}
+	command := args[0]
+	if command != "login" && command != "download" && command != "status" && command != "logout" {
+		fmt.Fprintln(stderr, "Unknown command; use --help.")
+		return 2
+	}
+	flags := flag.NewFlagSet(command, flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	destination := flags.String("destination", "", "archive root")
+	profile := flags.String("profile", "default", "local profile")
+	workers := flags.Int("workers", 2, "workers 1..4")
+	_ = flags.Bool("overwrite", false, "permit local replacement")
+	dry := flags.Bool("dry-run", false, "write-free preview")
+	_ = flags.Bool("remember-session", false, "opt-in session storage")
+	if flags.Parse(args[1:]) != nil || flags.NArg() != 0 || *workers < 1 || *workers > 4 || !validProfile(*profile) {
+		fmt.Fprintln(stderr, "Invalid options; use --help.")
+		return 2
+	}
+	if (command == "status" || command == "download") && *destination == "" {
+		fmt.Fprintln(stderr, "--destination is required.")
+		return 2
+	}
+	if command == "status" {
+		report, err := state.Load(*destination)
+		if err != nil {
+			fmt.Fprintln(out, "No usable private report; no files changed.")
+			return 3
+		}
+		fmt.Fprintf(out, "Last saved report (may be stale): %s; observed items: %d; listing complete: %t\n", report.Updated.Format("2006-01-02T15:04:05Z"), len(report.Items), report.ListingComplete)
+		return 0
+	}
+	if !*dry {
+		log, err := openLog()
+		if err != nil {
+			fmt.Fprintln(stderr, "Cannot open private CWD logs/icloud-dl.log.")
+			return 5
+		}
+		slog.New(slog.NewJSONHandler(log, nil)).Info(logStarted, slog.String("command", command))
+		if log.Close() != nil {
+			return 5
+		}
+	}
+	if errors.Is(ctx.Err(), context.Canceled) {
+		return 130
+	}
+	fmt.Fprintln(stderr, apple.ErrNotReady)
+	return 4
+}
+
+// validProfile accepts only bounded portable profile identifiers.
+func validProfile(s string) bool {
+	if len(s) < 1 || len(s) > 64 {
+		return false
+	}
+	for _, r := range s {
+		if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '_' || r == '-') {
+			return false
+		}
+	}
+	return true
+}
+
+// openLog creates private CWD logging and refuses unsafe existing objects.
+func openLog() (*os.File, error) {
+	dir := "logs"
+	path := filepath.Join(dir, "icloud-dl.log")
+	if media.Directory(dir, true) != nil || state.Private(dir, true) != nil {
+		return nil, state.ErrPrivacy
+	}
+	if _, err := os.Lstat(path); err == nil {
+		if state.Private(path, false) != nil {
+			return nil, state.ErrPrivacy
+		}
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return nil, state.ErrPrivacy
+	}
+	return os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+}
