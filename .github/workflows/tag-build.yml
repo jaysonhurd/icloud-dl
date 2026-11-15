@@ -39,6 +39,7 @@ jobs:
       - name: Check formatting, build, tests and vet
         env:
           GOTOOLCHAIN: local
+          GOEXPERIMENT: jsonv2
           GOFLAGS: -mod=readonly
         run: |
           unformatted="$(git ls-files -z -- '*.go' ':(exclude)vendor/**' | xargs -0 -r gofmt -l)"
@@ -90,6 +91,7 @@ jobs:
         env:
           CGO_ENABLED: '0'
           GOTOOLCHAIN: local
+          GOEXPERIMENT: jsonv2
           GOFLAGS: -mod=readonly
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}

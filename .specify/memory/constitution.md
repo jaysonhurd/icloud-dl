@@ -1,16 +1,17 @@
 <!--
 Sync Impact Report
-Version: 3.0.0 -> 3.1.0 (user selects exact Go 1.27.3 toolchain).
-Principle IV now requires Go 1.27.3 and a matching future go.mod declaration.
-Spec, plan, tasks, README, project instructions and both tag-build setup steps
-aligned. Best-effort scope and security safeguards remain unchanged.
-No Go module, source or SDK installation is introduced by this amendment.
+Version: 3.1.0 -> 3.1.1 (guidance organization and current implementation clarifications).
+Root instructions now reference durable principles instead of duplicating them.
+Records the owner's existing explicit JSON v2 experiment authorization; no new
+experiment, dependency, runtime behavior or privacy obligation is introduced.
+README and active plan version references aligned. Generated templates/skills,
+existing integration and pre-existing skill relocations preserved.
 -->
 # icloud-dl Constitution
 
 ## Core Principles
 
-### I. Requirements Before Implementatio
+### I. Requirements Before Implementation
 
 Each feature MUST define users, observable behavior, and measurable acceptance
 criteria before planning implementation. Technical decisions and unresolved
@@ -47,7 +48,7 @@ results, blocked checks, and limitations MUST be reported. New validation script
 MUST include tests for relevant failures. Tests MUST protect behavior rather than
 merely mirror implementation or inflate coverage.
 
-Future Go tests MUST use the standard `testing` package and native tooling by
+Go tests MUST use the standard `testing` package and native tooling by
 default, cover meaningful success and error paths, and aim for at least 95%
 statement coverage where practical. Report the measured scope, percentage and
 reasons for any shortfall; coverage MUST NOT replace acceptance or failure-path
@@ -61,10 +62,10 @@ This preference does not prohibit appropriate handler tests using `httptest`.
 Use synthetic fixtures, fake clocks/randomness, and temporary directories for
 deterministic tests of retries, cancellation, filesystem faults and privacy.
 
-### IV. Idiomatic Go When Application Work Begins
+### IV. Idiomatic Go
 
 Go is the default for backend work unless requirements justify another choice.
-The required toolchain MUST be Go 1.27.3 for local development and CI. Future
+The required toolchain MUST be Go 1.27.3 for local development and CI. The
 `go.mod` MUST declare `go 1.27.3`; do not silently select a newer toolchain. Go code
 MUST follow Effective Go and the following project conventions:
 
@@ -76,9 +77,10 @@ MUST follow Effective Go and the following project conventions:
   comments. Private variables/constants do not need comments by default.
 - **JSON contracts:** struct fields MUST have appropriate JSON tags unless a
   documented exception applies. Preserve intentional wire names, excluded fields,
-  and existing caller contracts. Prefer `encoding/json/v2` only when supported by
-  the selected toolchain and compatible with required wire behavior; do not
-  implicitly upgrade Go or enable experiments to satisfy this preference.
+  and existing caller contracts. Use `encoding/json/v2` with the owner-authorized `GOEXPERIMENT=jsonv2`
+  on Go 1.27.3, locally and in CI; preserve existing report wire behavior. Do not
+  implicitly upgrade Go or enable additional experiments. Private runtime-only
+  structs need not have JSON tags; never serialize credential-bearing structs.
 - **HTTP:** prefer standard-library `net/http` and middleware patterns where
   applicable. Keep HTTP clients injectable and retain the separate authentication
   and media trust boundaries defined by the product design.
@@ -116,8 +118,8 @@ dependencies and resource cleanup; this amendment adds none.
 Effective Go's historical examples MUST be checked against the project's chosen
 toolchain before adoption. Preserve this project's explicit contracts and record
 intentional overrides. Refresh the local reference only on an explicit source
-refresh request. This design-only kit establishes no Go module, source files,
-runtime configuration, logs directory, or application dependencies.
+refresh request. Instruction/preference updates alone MUST NOT introduce application features,
+runtime output or unjustified dependencies.
 
 ### V. Reproducible Project Tooling
 
@@ -298,11 +300,22 @@ enforced remote protections. Report missing tools, permissions, or services.
 
 ## Governance
 
+### Guidance Responsibilities
+
+Root AGENTS.md MUST focus on project structure, commands and local conventions,
+referencing this constitution for durable rules. Feature requirements, design and
+work items belong in specs/. Generated Spec Kit skills/templates/helpers MUST be
+preserved; custom workflows belong in separate skills, without unnecessary agent
+or subagent definitions. Preserve existing integration settings during preference
+updates; source refresh, installation and integration migration are separate scope.
+
 ### Coding Guidance Provenance
 
 This amendment adapts the local `.codex/AGENTS.md`,
 `.codex/skills/initialize-go/SKILL.md`, its `EFFECTIVE_GO.md` reference,
 `.codex/templates/go-project/AGENTS.md`, and the Spec Kit constitution principles.
+The 2026-11-14 preference review also used the available
+`.agents/coding-preferences` defaults, Go template and Spec Kit principles.
 These rules are recorded here so shared governance does not depend on the ignored
 personal `.codex/` directory. Project privacy, authentication, integrity and wire
 contracts take precedence over generic coding preferences. In particular, do not
@@ -323,4 +336,4 @@ removal, MINOR for new principles or expanded obligations, and PATCH for
 clarifications with unchanged obligations. Preserve the original ratification
 date. Operational commands and their validation limits belong in the README.
 
-**Version**: 3.1.0 | **Ratified**: 2026-11-07 | **Last Amended**: 2026-11-07
+**Version**: 3.1.1 | **Ratified**: 2026-11-07 | **Last Amended**: 2026-11-14

@@ -176,3 +176,71 @@ Read-only access, ordinary Apple verification, private credentials, safe destina
 and honest limitations remain. Local journals/receipts, full-library count proofs,
 mandatory media hashing and robust concurrent-process/crash recovery are not
 requirements. Ordinary reruns compare final filename/size and restart partial work.
+
+## Experimental Implementation Source Review (2026-11-07)
+
+Independent SRP code follows SRP-6a arithmetic with RFC 5054 Appendix A's public
+2048-bit group. Apple's observed deviations (SHA256 password prehash, PBKDF2,
+s2k/s2k_fo, omitted username inside x, padded SHA256 proofs) are attributable to
+[rclone api/srp.go, derivePassword/processChallenge/calculateX/calculateM1](https://github.com/rclone/rclone/blob/82cb84b2014bec6a167dc28eb53233b2d4abe1b3/backend/iclouddrive/api/srp.go).
+The implementation was independently structured from these protocol observations;
+no upstream dependency, vendored file or subprocess is used. A synthetic server
+agreement test is evidence of local arithmetic consistency, not Apple acceptance.
+Auth authorize/federate/init/complete, token handoff, code verification and explicit
+trust pointers are OBS-001/002; the public widget identifier comes from
+[icloudpd base.py, _get_auth_headers](https://github.com/icloud-photos-downloader/icloud_photos_downloader/blob/3caeae584c3d8bc6fcc51a1c9f7e5413b1422fd3/src/pyicloud_ipd/base.py#L596).
+Discovery path/ckdatabasews and lookup observations are OBS-003/006. No real tokens,
+account responses, signed URLs or password-derived data are kept in fixtures.
+
+The chosen service authority suffix `-ckdatabasews.icloud.com` and media suffix
+`.icloud-content.com` are provisional narrow admission policies, not verified
+exhaustive Apple host contracts. Only the service authority actually discovered
+through authenticated accountLogin is admitted. Regional/other CDN destinations
+are unsupported. Redirects, proxies and media cookie forwarding are disabled.
+OQ-006's live authority validation remains open. The implementation should fail
+rather than broadening admission automatically when legitimate endpoints differ.
+No live account was used. All OQ entries remain open to the extent that they
+require Apple compatibility evidence. Source review is not a claim of service
+stability or of tested complete-library access.
+
+### Verification delivery handling correction
+
+The owner observed a phone notification followed by a local failure before code
+entry. No HTTP status or raw account response was provided, so the exact service
+response remains unknown. The previous implementation accepted only 200/204 for
+notification delivery. The compatibility policy now also allows 202 (accepted)
+and 409 (outstanding challenge) to reach the local code prompt; neither status
+establishes authentication. A separate code-verification request must succeed
+before account login/trust. Denial/throttling still stops without retry. Synthetic
+tests cover delivery variants, rejected codes and absence of automatic trust.
+Failures now include only the safe operation category and numeric HTTP status.
+These are implementation policies/tests, not newly verified Apple protocol facts.
+
+### Explicit trust and account-login handoff correction
+
+The owner reached code entry and consented to session trust, then received a
+previously undifferentiated authentication error. The exact failing HTTP status
+was not provided. Review found that the client accepted only HTTP 200 for trust
+and omitted the returned `X-Apple-TwoSV-Trust-Token` from accountLogin. It now
+accepts 200/204 and passes that token as `trustToken` only after explicit consent
+and a successful trust request. The token stays ephemeral and is never logged or
+saved. Trust issuance/token handoff is observed in the pinned rclone session.go
+`extractHeaders`, `TrustSession`, and `AuthWithToken` linked under OBS-001/002;
+204 support is a compatibility policy tested synthetically, not a newly observed
+Apple response. Stage-specific safe errors distinguish trust, absent session
+token, account-login status/decoding and service-discovery failures. No access
+control is bypassed, and failed trust prevents the account-login request.
+
+### Service-discovery validation correction
+
+The owner reached accountLogin but saw a combined endpoint-rejection message;
+no raw URL/status fields were supplied. The exact rejected condition is unknown.
+Review of pinned icloudpd `base.py::_get_webservice_url` (line 1078 at the revision
+linked in OBS-001) shows lookup requires the service entry and URL, but does not
+require a status field. The implementation now permits absent status, still
+rejects explicit non-active status, and normalizes an explicit HTTPS default port
+443 before service admission. Synthetic tests cover these cases and unapproved
+hosts/ports/userinfo/query data. Discovery failures now identify a fixed reason
+without reflecting URLs, arbitrary response fields or identifiers. This is local
+compatibility correction, not evidence of the owner's exact response or broader
+regional/CDN support. Only the authenticated discovered Photos host is admitted.

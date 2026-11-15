@@ -2,7 +2,8 @@
 package state
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"errors"
 	"os"
 	"path/filepath"
@@ -31,6 +32,7 @@ type Item struct {
 type Report struct {
 	Version         int       `json:"version"`
 	Updated         time.Time `json:"updated"`
+	Limited         bool      `json:"limited,omitempty"`
 	ListingComplete bool      `json:"listing_complete"`
 	Items           []Item    `json:"items"`
 }
@@ -85,7 +87,7 @@ func Save(root string, report Report) error {
 	}
 	report.Version = 1
 	report.Updated = time.Now().UTC()
-	data, err := json.MarshalIndent(report, "", "  ")
+	data, err := json.Marshal(report, jsontext.WithIndent("  "), json.FormatNilSliceAsNull(true))
 	if err != nil {
 		return ErrReport
 	}

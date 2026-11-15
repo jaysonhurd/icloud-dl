@@ -12,7 +12,11 @@ func TestOffline(t *testing.T) {
 		args []string
 		code int
 	}{
-		{[]string{"--help"}, 0}, {[]string{"--version"}, 0}, {[]string{"invalid"}, 2}, {[]string{"download"}, 2}, {[]string{"login", "--profile", "../bad"}, 2}, {[]string{"download", "--destination", t.TempDir(), "--dry-run"}, 4},
+
+		{[]string{"download", "--destination", t.TempDir(), "--limit", "-1"}, 2},
+		{[]string{"download", "--destination", t.TempDir(), "--limit", "abc"}, 2},
+		{[]string{"status", "--destination", t.TempDir(), "--limit", "1"}, 2},
+		{[]string{"--help"}, 0}, {[]string{"--version"}, 0}, {[]string{"invalid"}, 2}, {[]string{"download"}, 2}, {[]string{"login", "--profile", "../bad"}, 2},
 	} {
 		var out, stderr bytes.Buffer
 		if got := run(context.Background(), tc.args, &out, &stderr); got != tc.code {

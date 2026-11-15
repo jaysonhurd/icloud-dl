@@ -1,11 +1,12 @@
 # Implementation Plan: Best-Effort Personal iCloud Photos Downloader
 
 **Status**: partial initial implementation; offline media/report core exists.
-Apple authentication/catalog and CLI wizard remain pending. README records actual behavior.
+Experimental ephemeral SRP/catalog/download orchestration now exists, with no
+live-account validation. Wizard, sessions and retry/concurrency work remain pending.
 **Targets**: Debian/Ubuntu Linux amd64, Windows amd64, macOS arm64 and amd64.
-**Toolchain**: Go 1.27.3. Module: `github.com/jaysonhurd/icloud-dl`. Inputs:
+**Toolchain**: Go 1.27.3 with explicitly authorized `GOEXPERIMENT=jsonv2`. Module: `github.com/jaysonhurd/icloud-dl`. Inputs:
 [spec](spec.md), [research](research.md), [tasks](tasks.md), and
-[constitution](../../.specify/memory/constitution.md), version 3.1.0.
+[constitution](../../.specify/memory/constitution.md), version 3.1.1.
 
 ## Scope and Design Approach
 
@@ -207,3 +208,30 @@ executable; this does not prove live downloads or native platform behavior.
 Build tooling may download Go/modules and upload requested binaries, but never
 account credentials, photo metadata or media. This documentation update adds no
 runtime implementation or dependencies.
+
+## Bounded Test Runs (FR-026)
+
+`archive.Config.Limit` caps selected distinct supported originals before URL lookup.
+Zero means unlimited; invalid negative configuration fails before enumeration.
+The current serial runner counts skips and failures toward the cap; duplicates
+and unsupported items do not consume it. Dry-run uses the same selection. Full
+listing may still occur. The report's optional `limited` field identifies supported
+originals omitted by the cap; listing completeness describes enumeration only.
+When worker scheduling is implemented, reserve selection slots before scheduling,
+so concurrency cannot overshoot. Wire the parsed CLI value into Config when the
+pending production download orchestration is implemented.
+
+## Experimental Apple Integration Evidence
+
+The `download` command now invokes the independent Apple source and passes the
+parsed Limit into archive.Config. Linux terminal input uses local `/dev/tty`
+with echo disabled for passwords/codes. Other ports refuse prompts until native
+support exists. Auth cookies are ephemeral in a cookie jar; a separate media
+client has no jar, headers or redirects. Only discovered HTTPS ckdatabasews
+service authorities and HTTPS subdomains of icloud-content.com are admitted for
+service/media respectively. Unknown hosts fail safely. This deliberately narrow
+policy may reject legitimate changed Apple delivery infrastructure.
+SRP arithmetic and synthetic server agreement, login discovery, paginated joins,
+lookup and media admission have offline tests. No current Apple account behavior
+has been demonstrated. Session storage/account binding, optional formats, source
+retry/expiry refresh, fatal-storage classification and the wizard remain incomplete.
