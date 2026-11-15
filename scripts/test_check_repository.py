@@ -84,5 +84,24 @@ class RepositoryChecks(unittest.TestCase):
         self.assertEqual(check(self.root), [])
 
 
+    def test_deleted_tracked_files_are_skipped_but_references_fail(self):
+        self.write("guide.md", "# Guide\n")
+        subprocess.run(["git", "add", "guide.md"], cwd=self.root, check=True)
+        (self.root / "guide.md").unlink()
+        self.assertEqual(check(self.root), [])
+        self.write("README.md", "[Guide](guide.md)\n")
+        self.assertTrue(any("missing local link" in e for e in check(self.root)))
+
+    def test_symlinked_document_uses_source_relative_links(self):
+        self.write("source/guide.md", "# Guide\n[Details](details.md)\n")
+        self.write("source/details.md", "# Details\n")
+        (self.root / "alias.md").symlink_to("source/guide.md")
+        self.assertEqual(check(self.root), [])
+
+    def test_dangling_symlink_is_reported(self):
+        (self.root / "broken.md").symlink_to("absent.md")
+        self.assertTrue(any("dangling symlink" in e for e in check(self.root)))
+
+
 if __name__ == "__main__":
     unittest.main()

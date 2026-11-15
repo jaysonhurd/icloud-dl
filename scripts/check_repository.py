@@ -50,6 +50,12 @@ def check(root):
     errors = []
     for path in paths:
         relative = path.relative_to(root)
+        if path.is_symlink() and not path.exists():
+            errors.append(f"{relative}: dangling symlink")
+            continue
+        # Git still lists locally deleted tracked files and may list nested repo directories.
+        if not path.is_file():
+            continue
         if path.name == "SKILL.md":
             text = path.read_text()
             metadata = re.match(r"\A---\n(.*?)\n---(?:\n|$)", text, re.S)
@@ -74,7 +80,7 @@ def check(root):
                 link = urlsplit(target)
                 if link.scheme or link.netloc:
                     continue
-                destination = (path.parent / unquote(link.path)).resolve() if link.path else path
+                destination = (path.resolve().parent / unquote(link.path)).resolve() if link.path else path
                 if not destination.exists():
                     errors.append(f"{relative}: missing local link target {target}")
                 elif link.fragment and destination.suffix == ".md":

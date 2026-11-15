@@ -3,8 +3,9 @@
 **Status**: initial implementation checkpoint. T001 setup is complete after local
 Go 1.27.3 checks and four-target cross-compilation. Remaining tasks are pending or
 partial; unchecked does not mean no code exists. The offline media/report core,
-HTTP boundary primitive and command skeleton exist. Apple authentication/catalog,
-interactive wizard, sessions and full orchestration do not work yet. See README.
+HTTP boundary primitive and command skeleton exist. An experimental Apple SRP/catalog source and download command wiring now exist;
+no live-account compatibility has been validated. Wizard, persisted sessions,
+retry/concurrency and remaining acceptance work are incomplete. See README.
 No live account or GitHub workflow execution has been tested.
 Inputs: [spec](spec.md), [research](research.md), [plan](plan.md),
 [constitution](../../.specify/memory/constitution.md).
@@ -282,3 +283,25 @@ state/recovery/reconciliation; US3 through consent, preview/status and logout.
 The user flows share the retained basic safeguards; elaborate reliability is out of scope. Optional media formats/delta synchronization
 are not hidden tasks in this release. No checklist item is completed by the mere
 presence of these design documents.
+
+## Bounded Test Run Follow-up
+
+- [ ] **T030** — Validate production wiring of download `--limit N` into
+  `archive.Config.Limit` as part of T020. Requirements: FR-026; acceptance: AC-020.
+  CLI parsing, serial runner enforcement, limited-report marker and synthetic tests
+  exist, and experimental CLI-to-Apple wiring is present. Complete mocked command
+  coverage and live compatibility remain pending with T008/T010/T020.
+  Completion requires end-to-end mocked command tests and slot reservation before
+  any future concurrent transfer scheduling; no live account required.
+
+### Experimental Integration Progress
+
+T002/T003/T004/T006/T008/T010/T011/T012/T013/T020/T030 now have partial
+implementation evidence: independent SRP, ephemeral auth/verification, discovered
+Photos authority, readiness query, rank listing, cross-page master association,
+fresh lookup, media admission and production limit wiring. Synthetic tests cover
+SRP server agreement, login/discovery, pagination/lookup and unsafe authorities.
+These task checkboxes remain pending because their full acceptance/security/manual
+validation criteria are not all met. No live Apple success is claimed. In
+particular, sessions/account binding, additional challenges, retry/expiry refresh,
+Windows ACLs, non-Linux prompts, wizard and full command-level mock coverage remain.

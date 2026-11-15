@@ -10,6 +10,11 @@ import (
 	"github.com/jaysonhurd/icloud-dl/internal/state"
 )
 
+var (
+	// ErrLimit indicates a negative per-invocation file limit.
+	ErrLimit = errors.New("limit must be zero or greater")
+)
+
 // Asset identifies a single supported original; URLs are deliberately excluded.
 type Asset struct {
 	ID        string `json:"id"`
@@ -29,15 +34,21 @@ type Config struct {
 	Destination string `json:"destination"`
 	Overwrite   bool   `json:"overwrite"`
 	DryRun      bool   `json:"dry_run"`
+	// Limit caps distinct supported originals selected; zero means unlimited.
+	Limit int `json:"limit"`
 }
 
 // Run preserves usable catalog entries after listing failure and reports actual outcomes.
 // This first pass runs serially; worker scheduling and retry policy remain pending.
 func Run(ctx context.Context, source Source, client media.ClientDoer, cfg Config) (state.Report, error) {
+	if cfg.Limit < 0 {
+		return state.Report{}, ErrLimit
+	}
 	assets, listErr := source.List(ctx)
 	report := state.Report{Version: 1, ListingComplete: listErr == nil}
 	result := listErr
 	seen := map[string]bool{}
+	selected := 0
 	for _, asset := range assets {
 		if err := ctx.Err(); err != nil {
 			return report, err
@@ -53,6 +64,11 @@ func Run(ctx context.Context, source Source, client media.ClientDoer, cfg Config
 		leaf := media.Name(asset.Name, asset.ID)
 		item := state.Item{ID: asset.ID, Path: filepath.Join("originals", leaf), Size: asset.Size, Outcome: "unsupported"}
 		if asset.Supported {
+			if cfg.Limit > 0 && selected >= cfg.Limit {
+				report.Limited = true
+				continue
+			}
+			selected++
 			if cfg.DryRun {
 				item.Outcome = "planned"
 			} else {

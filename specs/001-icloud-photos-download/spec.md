@@ -1,6 +1,6 @@
 # Feature Specification: Personal iCloud Photos Archive
 
-**Created**: 2026-11-07 | **Status**: Design draft; not implemented
+**Created**: 2026-11-07 | **Status**: Draft requirements; partial experimental implementation
 **Toolchain**: Go 1.27.3, pinned for local development and CI.
 **Targets**: Go CLI for Debian/Ubuntu Linux amd64, Windows amd64, and macOS
 Apple Silicon (arm64) and Intel (amd64), one person's own Apple account.
@@ -20,7 +20,8 @@ personal library, download supported originals to the selected local destination
 and save a helpful last-run/progress report. This is a personal utility; robust
 backup guarantees, sophisticated resume and crash-proof state are not required. The protocol is
 private, unsupported, and changeable; source observations are not an Apple API
-contract. The downloader is not implemented; this kit also contains repository workflows.
+contract. An experimental implementation now exists; live Apple compatibility is unverified.
+The README describes completed behavior and known gaps.
 
 For this release, personal library means non-hidden, non-deleted assets in the
 primary private library. Hidden and recently deleted items are explicitly excluded
@@ -93,6 +94,8 @@ Acceptance: AC-001, AC-010, AC-013, AC-014, AC-015, AC-016.
 | FR-024 | Use expected original size when available. Same mapped name and size skips unverified, even with Y. Different size requires current-run Y/--overwrite for replacement; N leaves a conflict. Unknown size cannot justify a skip; an identified original may still be copied with HTTP/copy checks and size-unknown reporting. If its mapped final already exists, N preserves it and Y is required to replace it. Remote name collisions receive identity suffixes rather than replacing each other. Keep overwrite consent in memory for this invocation, not a persistent global default or receipt. Dry-run previews only. |
 | FR-025 | A GitHub tag-push workflow verifies source then compiles CGO-disabled binaries for linux/amd64 (Debian/Ubuntu), windows/amd64, darwin/arm64 and darwin/amd64, packages them and SHA-256 checksums, and uploads per-target Actions artifacts. Any pushed tag triggers it. Use exactly Go 1.27.3, consistent with the future go.mod declaration, SHA-pinned Actions, read-only permissions, timeouts and checkout without persisted credentials. Missing Go module/entry point or a failed verification/build fails clearly; no placeholder executable or silently successful skip. Compilation is not native runtime validation. |
 
+| FR-026 | Download accepts `--limit N`: zero (default) is unlimited; negative/noninteger values are usage errors. Select at most N distinct supported originals in catalog order, counting skips, failed lookups and failed copies toward the selection budget. Duplicates and unsupported items do not consume it. Dry-run uses the same bound. Do not perform media lookups/transfers for supported originals beyond the cap. Enumeration may still scan the library; a limited selection is not a full-library download. |
+
 ## CLI Contract
 
 Proposed first-release forms (design only; no commands are implemented):
@@ -100,7 +103,7 @@ Proposed first-release forms (design only; no commands are implemented):
 ```text
 icloud-dl                         # interactive wizard
 icloud-dl login [--profile NAME] [--remember-session]
-icloud-dl download --destination PATH [--profile NAME] [--workers 1..4] [--overwrite] [--dry-run]
+icloud-dl download --destination PATH [--profile NAME] [--workers 1..4] [--limit N] [--overwrite] [--dry-run]
 icloud-dl status --destination PATH [--profile NAME]
 icloud-dl logout [--profile NAME]
 icloud-dl --help
@@ -178,3 +181,5 @@ Keep unresolved protocol questions and unsupported formats visible; do not inven
 required request behavior, but every edge case need not be settled before useful
 personal use. Do not claim unrun tests or a verified complete backup. Binary builds
 still target all four platforms; report native tests actually performed.
+
+AC-020 (FR-026): synthetic catalogs containing duplicates and unsupported items must never exceed the configured selection/transfer cap, including lookup failures; zero is unlimited, invalid values fail before source access, previews issue no media requests, and reports disclose omitted supported items using `limited`.
